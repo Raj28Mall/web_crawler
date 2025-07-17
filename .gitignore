@@ -1,0 +1,46 @@
+# === Go build output ===
+/bin/
+/build/
+/dist/
+*.exe
+*.test
+*.out
+
+# === Go modules and vendor dir ===
+/vendor/
+
+# === Go coverage files ===
+*.cover
+*.cov
+*.coverprofile
+*.coverage
+
+# === IDE/editor configs ===
+.vscode/
+.idea/
+*.swp
+*.swo
+*.swn
+*.bak
+
+# === OS-specific junk ===
+.DS_Store
+Thumbs.db
+
+# === Env/config files (optional, if used) ===
+.env
+.env.*
+
+# === Logs, temp ===
+*.log
+*.tmp
+*.cache
+
+# === Node stuff (if you're mixing Go + web frontend) ===
+node_modules/
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+
+# === Git-specific ===
+!.gitignore
