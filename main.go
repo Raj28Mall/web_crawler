@@ -35,7 +35,6 @@ func main() {
 		"https://www.google.com/search?q=golang", // ⚠️ Google blocks scrapers fast
 		"https://stackoverflow.com/tags",
 		"https://slickdeals.net/",
-		"https://www.meetup.com/find/events/",
 		"https://ocw.mit.edu/",
 		"https://www.theverge.com/",
 		"https://techcrunch.com/",
@@ -48,19 +47,20 @@ func main() {
 		visitedUrls[url] = false
 	}
 
-	var wg sync.WaitGroup          //This is for pending jobs, not workers
-	jobs := make(chan string, 200) // Buffered channel size needs to be updated??
-	results := make(chan crawlResult, 100)
+	var wg sync.WaitGroup            //This is for pending jobs, not workers
+	jobs := make(chan string, 20000) // Buffered channel size needs to be updated??
+	results := make(chan crawlResult, 20000)
 	var client = &http.Client{
 		Timeout: time.Second * 5,
 	}
 
-	maxWorkers := 30
+	maxWorkers := 500
 
 	for i := range maxWorkers {
 		go func(id int) {
+			fmt.Printf("Worker %d started processing jobs.\n", id)
 			for url := range jobs {
-				results <- crawl(url, client)
+				results <- crawl(url, client, &totalUrlsVisited)
 			}
 			fmt.Printf("Worker %d finished processing jobs.\n", id)
 		}(i + 1)
@@ -79,6 +79,7 @@ func main() {
 	}
 
 	for result := range results {
+		fmt.Printf("Visited %s\n", result.sourceUrl)
 		totalUrlsVisited++
 		if result.Error != "" {
 			// fmt.Printf("Error while crawling %s: %s\n", result.sourceUrl, result.Error)
@@ -103,8 +104,9 @@ func main() {
 }
 
 // crawl fetches the content of the given URL and extracts links from it.
-func crawl(url string, client *http.Client) crawlResult {
+func crawl(url string, client *http.Client, totalUrlsVisited *int) crawlResult {
 	var result crawlResult
+	fmt.Printf("%s\r", fmt.Sprintf("Number of URLs visited so far: %d\n", *totalUrlsVisited))
 
 	resp, err := client.Get(url)
 	if err != nil {
@@ -138,6 +140,7 @@ func crawl(url string, client *http.Client) crawlResult {
 func extractLinks(doc *html.Node) []string {
 	var urls []string
 
+	// fmt.Print("Extracting links... ")
 	var recursiveExtract func(*html.Node)
 	recursiveExtract = func(n *html.Node) {
 		if n.Type == html.ElementNode && n.Data == "a" {
@@ -175,7 +178,9 @@ func resolveLinks(relativeLinks []string, baseURL *url.URL) []string {
 		}
 
 		var absoluteLink *url.URL
-		if !parsedLink.IsAbs() {
+		if parsedLink.IsAbs() {
+			absoluteLink = parsedLink
+		} else {
 			absoluteLink = baseURL.ResolveReference(parsedLink)
 		}
 
