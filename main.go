@@ -47,14 +47,14 @@ func main() {
 		visitedUrls[url] = false
 	}
 
-	var wg sync.WaitGroup            //This is for pending jobs, not workers
-	jobs := make(chan string, 20000) // Buffered channel size needs to be updated??
-	results := make(chan crawlResult, 20000)
+	var wg sync.WaitGroup           //This is for pending jobs, not workers
+	jobs := make(chan string, 2000) // Buffered channel size needs to be updated??
+	results := make(chan crawlResult, 2000)
 	var client = &http.Client{
 		Timeout: time.Second * 5,
 	}
 
-	maxWorkers := 500
+	maxWorkers := 50
 
 	for i := range maxWorkers {
 		go func(id int) {
