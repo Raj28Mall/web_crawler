@@ -42,9 +42,15 @@ func main() {
 	}
 
 	totalUrlsVisited := 0
-	visitedUrls := make(map[string]bool)
+	type visitedTracker struct {
+		mu          sync.Mutex
+		visitedUrls map[string]bool
+	}
+
+	var tracker visitedTracker
+	tracker.visitedUrls = make(map[string]bool)
 	for _, url := range websiteUrls {
-		visitedUrls[url] = false
+		tracker.visitedUrls[url] = false
 	}
 
 	var wg sync.WaitGroup           //This is for pending jobs, not workers
@@ -74,7 +80,7 @@ func main() {
 
 	wg.Add(len(websiteUrls)) // Add the number of initial URLs to the wait group
 	for _, websiteUrl := range websiteUrls {
-		visitedUrls[websiteUrl] = true
+		tracker.visitedUrls[websiteUrl] = true
 		jobs <- websiteUrl
 	}
 
@@ -88,13 +94,15 @@ func main() {
 		}
 
 		for _, foundUrl := range result.foundUrls {
-			if !visitedUrls[foundUrl] {
-				visitedUrls[foundUrl] = true
+			tracker.mu.Lock()
+			if !tracker.visitedUrls[foundUrl] {
+				tracker.visitedUrls[foundUrl] = true
 				wg.Add(1)
 				go func(url string) {
 					jobs <- url
 				}(foundUrl)
 			}
+			tracker.mu.Unlock()
 		}
 		wg.Done()
 	}
@@ -140,7 +148,6 @@ func crawl(url string, client *http.Client, totalUrlsVisited *int) crawlResult {
 func extractLinks(doc *html.Node) []string {
 	var urls []string
 
-	// fmt.Print("Extracting links... ")
 	var recursiveExtract func(*html.Node)
 	recursiveExtract = func(n *html.Node) {
 		if n.Type == html.ElementNode && n.Data == "a" {
